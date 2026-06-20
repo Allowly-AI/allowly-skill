@@ -1,0 +1,4 @@
+interface:
+  display_name: "Allowly"
+  short_description: "Check Allowly authorization before consequential agent actions."
+  default_prompt: "/allowly check --authorization-id auth_... --action email.send"
