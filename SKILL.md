@@ -1,6 +1,6 @@
 ---
 name: allowly
-description: Use before consequential or regulated agent actions such as contacting people, sending or exposing personal data, making automated decisions about individuals, changing records, invoking MCP/tools, or spending money. Provides the /allowly check pattern for calling Allowly /v1/check with an existing authorization_id and branching on allow, deny, confirm, or escalate while retaining the signed receipt id.
+description: Use before consequential or regulated agent actions such as contacting people, sending or exposing personal data, making automated decisions about individuals, changing records, invoking MCP/tools, or spending money. Provides the /allowly check pattern for calling Allowly /v1/check with an existing authorization_id and branching on allow, deny, confirm, or escalate while retaining the receipt id.
 ---
 
 # Allowly
@@ -42,10 +42,14 @@ otherwise `https://api.allowly.ai`.
 
 - `allow`: perform the action and retain the `receipt_id` in the action log.
 - `deny`: do not perform the action; surface the reason and replan.
-- `confirm`: pause; surface the prompt/nonce to the human loop; retry only after approval.
-- `escalate`: pause; route to the configured owner/manager; retry only after approval.
+- `confirm`: pause; surface the prompt/nonce to the human loop. After approval,
+  recheck the original `authorization_id` with the same action and resource.
+- `escalate`: pause; route to the configured owner/manager. After approval,
+  recheck the original request; one matching check is allowed and consumes the approval.
 
 Never treat `confirm` or `escalate` as approval. They are control-flow stops.
+Never perform the action from an approval response alone. A rejected escalation
+becomes `deny` on the matching recheck.
 
 ## Setup Boundary
 

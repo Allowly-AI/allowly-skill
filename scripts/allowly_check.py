@@ -49,6 +49,8 @@ def check(payload: dict[str, Any], *, api_key: str, api_url: str, timeout: float
 
 def summarize(response: dict[str, Any]) -> dict[str, Any]:
     results = response.get("results") or {}
+    if len(results) != 1:
+        raise ValueError(f"expected one action result, got {len(results)}")
     action, result = next(iter(results.items()), (None, {}))
     receipt = result.get("receipt") or {}
     summary = {
@@ -81,7 +83,10 @@ def parse_args(argv: list[str]) -> Any:
     parser.add_argument("--estimated-cost-micros", type=int)
     parser.add_argument("--api-url", default=os.getenv("ALLOWLY_API_URL", "https://api.allowly.ai"))
     parser.add_argument("--timeout", type=float, default=30.0)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if len(args.action) != 1:
+        parser.error("exactly one --action is supported")
+    return args
 
 
 def self_test() -> None:
@@ -98,6 +103,12 @@ def self_test() -> None:
     summary = summarize(response)
     assert summary["decision"] == "allow"
     assert summary["receipt_id"] == "rcp_test"
+    try:
+        summarize({"results": {"a": {}, "b": {}}})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("multiple action results must fail closed")
 
 
 def main(argv: list[str]) -> int:

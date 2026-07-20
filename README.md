@@ -25,8 +25,12 @@ Decisions:
 
 - `allow`: proceed and log the receipt id.
 - `deny`: stop and replan.
-- `confirm`: pause for the human approval flow, then retry.
-- `escalate`: pause for the configured approver, then retry if approved.
+- `confirm`: pause for approval, then recheck the original authorization with
+  the same action and resource.
+- `escalate`: pause for the configured approver, then recheck the original
+  request if approved; one matching allow consumes the approval.
+
+Never perform the action from an approval response alone.
 
 ## Setup
 
