@@ -32,6 +32,10 @@ Decisions:
 
 Never perform the action from an approval response alone.
 
+The check may return a pending receipt id. Signed receipts use format `2.0.0`,
+with signed top-level `alg` and `key_id` fields and an unpadded base64url
+`signature`; verify them against the expected workspace's published keys.
+
 ## Setup
 
 The skill does not create authorizations. Use the Allowly CLI for workspace

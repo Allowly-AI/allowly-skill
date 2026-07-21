@@ -51,6 +51,11 @@ Never treat `confirm` or `escalate` as approval. They are control-flow stops.
 Never perform the action from an approval response alone. A rejected escalation
 becomes `deny` on the matching recheck.
 
+The check response may contain only a pending receipt id. A fetched signed
+receipt uses format `2.0.0`, with signed top-level `alg` and `key_id` fields and
+an unpadded base64url `signature` string. Signature presence is not verification;
+verify with the published workspace keys and expected workspace id.
+
 ## Setup Boundary
 
 Teach setup by pointing users to the CLI:
