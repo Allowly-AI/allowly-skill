@@ -41,6 +41,8 @@ def check(payload: dict[str, Any], *, api_key: str, api_url: str, timeout: float
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            # Cloudflare bans urllib's default user-agent at the edge (error 1010).
+            "User-Agent": "allowly-agent-skill",
         },
     )
     with urlopen(request, timeout=timeout) as response:

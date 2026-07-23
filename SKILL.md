@@ -56,6 +56,24 @@ receipt uses format `2.0.0`, with signed top-level `alg` and `key_id` fields and
 an unpadded base64url `signature` string. Signature presence is not verification;
 verify with the published workspace keys and expected workspace id.
 
+## Budget Settlement
+
+A check sent with `--estimated-cost-micros` reserves that amount against the
+authorization's budget, and the reservation stays charged until settled. After
+the budgeted action completes, report the actual cost promptly — settlement
+needs the check receipt to still exist:
+
+```bash
+python scripts/allowly_settle.py \
+  --check-receipt-id rcp_... \
+  --actual-cost-micros 25
+```
+
+Use the `receipt_id` from the check output. Retries are safe: the idempotency
+key defaults to the check receipt id, so repeating the call replays the original
+settlement instead of erroring. A different cost for an already-settled receipt
+is rejected by the API; never resettle to change a number.
+
 ## Setup Boundary
 
 Teach setup by pointing users to the CLI:
