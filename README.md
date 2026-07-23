@@ -32,7 +32,7 @@ Decisions:
 
 Never perform the action from an approval response alone.
 
-The check may return a pending receipt id. Signed receipts use format `2.0.0`,
+The check may return a pending receipt id. Signed receipts use wire format `3` (`schema_version`),
 with signed top-level `alg` and `key_id` fields and an unpadded base64url
 `signature`; verify them against the expected workspace's published keys.
 
