@@ -64,6 +64,7 @@ def summarize(response: dict[str, Any]) -> dict[str, Any]:
     }
     for key in (
         "confirm_nonce",
+        "confirm_expires_at",
         "confirm_prompt_hint",
         "escalation_id",
         "escalation_to",
@@ -105,6 +106,22 @@ def self_test() -> None:
     summary = summarize(response)
     assert summary["decision"] == "allow"
     assert summary["receipt_id"] == "rcp_test"
+    confirm_summary = summarize(
+        {
+            "authorization_id": "auth_test",
+            "results": {
+                "email.send": {
+                    "decision": "confirm",
+                    "reason": "action_requires_user_confirmation",
+                    "confirm_nonce": "cnf_test",
+                    "confirm_expires_at": "2026-07-29T12:00:00.000Z",
+                    "confirm_prompt_hint": "email.send",
+                    "receipt": {"receipt_id": "rcp_confirm"},
+                }
+            },
+        }
+    )
+    assert confirm_summary["confirm_expires_at"] == "2026-07-29T12:00:00.000Z"
     try:
         summarize({"results": {"a": {}, "b": {}}})
     except ValueError:

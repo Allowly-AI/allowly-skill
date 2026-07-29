@@ -39,7 +39,11 @@ def main() -> int:
         print(f"blocked: {result['reason']}")
         return 1
     if result["decision"] == "confirm":
-        print(f"pause for confirmation: {result.get('confirm_prompt_hint')}")
+        print(
+            "pause for confirmation: "
+            f"{result.get('confirm_prompt_hint')} "
+            f"(expires {result.get('confirm_expires_at')})"
+        )
         return 2
     if result["decision"] == "escalate":
         print(f"pause for escalation: {result.get('escalation_to')}")

@@ -42,7 +42,8 @@ otherwise `https://api.allowly.ai`.
 
 - `allow`: perform the action and retain the `receipt_id` in the action log.
 - `deny`: do not perform the action; surface the reason and replan.
-- `confirm`: pause; surface the prompt/nonce to the human loop. After approval,
+- `confirm`: pause; surface the prompt, nonce, and `confirm_expires_at` deadline
+  to the human loop. Do not present or approve an expired prompt. After approval,
   recheck the original `authorization_id` with the same action and resource.
 - `escalate`: pause; route to the configured owner/manager. After approval,
   recheck the original request; one matching check is allowed and consumes the approval.
