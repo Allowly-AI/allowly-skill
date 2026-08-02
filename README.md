@@ -32,8 +32,8 @@ Decisions:
 
 Never perform the action from an approval response alone.
 
-The check may return a pending receipt id. Signed receipts use wire format `3` (`schema_version`),
-with signed top-level `alg` and `key_id` fields and an unpadded base64url
+The check may return a pending receipt id. Signed receipts have a `schema_version`,
+signed top-level `alg` and `key_id` fields, and an unpadded base64url
 `signature`; verify them against the expected workspace's published keys.
 
 ## Setup

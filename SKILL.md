@@ -53,7 +53,7 @@ Never perform the action from an approval response alone. A rejected escalation
 becomes `deny` on the matching recheck.
 
 The check response may contain only a pending receipt id. A fetched signed
-receipt uses wire format `3` (`schema_version`), with signed top-level `alg` and `key_id` fields and
+receipt has a `schema_version`, signed top-level `alg` and `key_id` fields, and
 an unpadded base64url `signature` string. Signature presence is not verification;
 verify with the published workspace keys and expected workspace id.
 
