@@ -9,6 +9,9 @@ Use Allowly before the agent performs a consequential action. The authorization
 must already exist; setup and authorization creation belong to the customer app
 and the Allowly CLI, not this skill.
 
+Script paths below are relative to this SKILL.md file, not to the working
+directory. Resolve them against the skill directory before running.
+
 ## Runtime Check
 
 For a manual check, use:
@@ -20,7 +23,7 @@ For a manual check, use:
 That maps to:
 
 ```bash
-python scripts/allowly_check.py \
+python3 scripts/allowly_check.py \
   --authorization-id auth_... \
   --action email.send
 ```
@@ -28,25 +31,59 @@ python scripts/allowly_check.py \
 Optional fields:
 
 ```bash
-python scripts/allowly_check.py \
+python3 scripts/allowly_check.py \
   --authorization-id auth_... \
   --action email.send \
   --resource gmail:thread:abc123 \
   --context '{"visibility":"external"}'
 ```
 
+If the authorization carries a budget, `--estimated-cost-micros` is required and
+exactly one action is permitted; without it `/v1/check` returns 422:
+
+```bash
+python3 scripts/allowly_check.py \
+  --authorization-id auth_... \
+  --action email.send \
+  --estimated-cost-micros 25 \
+  --idempotency-key send-invoice-4821
+```
+
+Pass `--idempotency-key` on any budgeted check. A retry without one reserves the
+budget a second time. Use a stable business-operation identifier, not a
+timestamp or random value.
+
+`context` may not use the keys `budget`, `escalation`, or `session_id` — the API
+writes those into the receipt itself and rejects them with 422. Pass a session
+label with `--session-id`. Keep context under 4KB.
+
 The script requires `ALLOWLY_API_KEY`. It uses `ALLOWLY_API_URL` when set,
 otherwise `https://api.allowly.ai`.
 
 ## Decision Behavior
 
+A decision is only the four verbs below. Any non-2xx response from `/v1/check`
+is **not** an authorization: do not perform the action. On 429 or 5xx, retry per
+`Retry-After` and stop if it does not clear. A check that fails to complete
+means the action does not happen.
+
 - `allow`: perform the action and retain the `receipt_id` in the action log.
 - `deny`: do not perform the action; surface the reason and replan.
 - `confirm`: pause; surface the prompt, nonce, and `confirm_expires_at` deadline
-  to the human loop. Do not present or approve an expired prompt. After approval,
-  recheck the original `authorization_id` with the same action and resource.
+  to the human loop. Do not present or approve an expired prompt.
+  `confirm_prompt_hint` is the raw action name, not a human-readable prompt —
+  compose that from the action plus the `resource` and `context` you sent.
+  After approval, recheck the original `authorization_id` with the same action,
+  the same resource, and the **identical `context` object** from the check that
+  produced the confirm. The approval is bound to the evaluated condition value,
+  not to the action alone.
+  Approval opens a short-lived grant (default 60s, max 300s, set by the
+  approving caller's `ttl_seconds`). Issue the recheck immediately. A second
+  `confirm` on the recheck usually means the grant expired, not that approval
+  failed.
 - `escalate`: pause; route to the configured owner/manager. After approval,
-  recheck the original request; one matching check is allowed and consumes the approval.
+  recheck the original request with the same action, resource, and context; one
+  matching check is allowed and consumes the approval.
 
 Never treat `confirm` or `escalate` as approval. They are control-flow stops.
 Never perform the action from an approval response alone. A rejected escalation
@@ -60,12 +97,16 @@ verify with the published workspace keys and expected workspace id.
 ## Budget Settlement
 
 A check sent with `--estimated-cost-micros` reserves that amount against the
-authorization's budget, and the reservation stays charged until settled. After
-the budgeted action completes, report the actual cost promptly — settlement
-needs the check receipt to still exist:
+authorization's budget only when the authorization has a budget configured. On a
+non-budgeted authorization the value is ignored and the resulting receipt cannot
+be settled.
+
+A reservation stays charged until settled. After the budgeted action completes,
+report the actual cost promptly — settlement needs the check receipt to still
+exist:
 
 ```bash
-python scripts/allowly_settle.py \
+python3 scripts/allowly_settle.py \
   --check-receipt-id rcp_... \
   --actual-cost-micros 25
 ```

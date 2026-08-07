@@ -12,6 +12,12 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
+# The API writes these into the receipt itself, so /v1/check rejects them in
+# caller context with 422. Fail locally instead of round-tripping to find out.
+RESERVED_CONTEXT_KEYS = frozenset({"budget", "escalation", "session_id"})
+MAX_CONTEXT_BYTES = 4 * 1024
+
+
 def build_payload(args: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "authorization_id": args.authorization_id,
@@ -27,23 +33,41 @@ def build_payload(args: Any) -> dict[str, Any]:
         context = json.loads(args.context)
         if not isinstance(context, dict):
             raise ValueError("--context must be a JSON object")
+        reserved = sorted(RESERVED_CONTEXT_KEYS.intersection(context))
+        if reserved:
+            raise ValueError(
+                f"--context uses reserved keys: {reserved}; use --session-id for session_id"
+            )
+        size = len(json.dumps(context, separators=(",", ":")).encode("utf-8"))
+        if size > MAX_CONTEXT_BYTES:
+            raise ValueError(f"--context is {size} bytes, over the {MAX_CONTEXT_BYTES} byte limit")
         payload["context"] = context
     return payload
 
 
-def check(payload: dict[str, Any], *, api_key: str, api_url: str, timeout: float) -> dict[str, Any]:
+def check(
+    payload: dict[str, Any],
+    *,
+    api_key: str,
+    api_url: str,
+    timeout: float,
+    idempotency_key: str | None = None,
+) -> dict[str, Any]:
     body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        # Cloudflare bans urllib's default user-agent at the edge (error 1010).
+        "User-Agent": "allowly-agent-skill",
+    }
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
     request = Request(
         f"{api_url.rstrip('/')}/v1/check",
         data=body,
         method="POST",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            # Cloudflare bans urllib's default user-agent at the edge (error 1010).
-            "User-Agent": "allowly-agent-skill",
-        },
+        headers=headers,
     )
     with urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
@@ -84,6 +108,10 @@ def parse_args(argv: list[str]) -> Any:
     parser.add_argument("--context", help="JSON object copied into the check context")
     parser.add_argument("--session-id")
     parser.add_argument("--estimated-cost-micros", type=int)
+    parser.add_argument(
+        "--idempotency-key",
+        help="replay key; a retried budgeted check reserves budget twice without one",
+    )
     parser.add_argument("--api-url", default=os.getenv("ALLOWLY_API_URL", "https://api.allowly.ai"))
     parser.add_argument("--timeout", type=float, default=30.0)
     args = parser.parse_args(argv)
@@ -115,6 +143,34 @@ def self_test() -> None:
     else:
         raise AssertionError("multiple action results must fail closed")
 
+    class _Args:
+        authorization_id = "auth_test"
+        action = ["email.send"]
+        resource = None
+        session_id = None
+        estimated_cost_micros = None
+        context = None
+
+    args = _Args()
+    args.context = json.dumps({"session_id": "s"})
+    try:
+        build_payload(args)
+    except ValueError as exc:
+        assert "reserved" in str(exc)
+    else:
+        raise AssertionError("reserved context keys must be rejected locally")
+
+    args.context = json.dumps({"pad": "x" * (MAX_CONTEXT_BYTES + 1)})
+    try:
+        build_payload(args)
+    except ValueError as exc:
+        assert "over the" in str(exc)
+    else:
+        raise AssertionError("oversized context must be rejected locally")
+
+    args.context = json.dumps({"visibility": "external"})
+    assert build_payload(args)["context"] == {"visibility": "external"}
+
 
 def main(argv: list[str]) -> int:
     if argv == ["--self-test"]:
@@ -129,7 +185,13 @@ def main(argv: list[str]) -> int:
         return 2
 
     try:
-        response = check(build_payload(args), api_key=api_key, api_url=args.api_url, timeout=args.timeout)
+        response = check(
+            build_payload(args),
+            api_key=api_key,
+            api_url=args.api_url,
+            timeout=args.timeout,
+            idempotency_key=args.idempotency_key,
+        )
     except (ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
