@@ -53,12 +53,30 @@ Pass `--idempotency-key` on any budgeted check. A retry without one reserves the
 budget a second time. Use a stable business-operation identifier, not a
 timestamp or random value.
 
-`context` may not use the keys `budget`, `escalation`, or `session_id` — the API
-writes those into the receipt itself and rejects them with 422. Pass a session
-label with `--session-id`. Keep context under 4KB.
+`context` may not use `budget`, `escalation`, `session_id`,
+`authorization_provenance`, `identity_verification`, `client_timestamp`,
+`client_timestamp_source`, or `execution`. These are server-owned receipt
+fields; the API rejects caller use with 422. Pass a session label with
+`--session-id` and event time with `--client-timestamp`. Keep context under 4KB.
 
 The script requires `ALLOWLY_API_KEY`. It uses `ALLOWLY_API_URL` when set,
 otherwise `https://api.allowly.ai`.
+
+For an Auth0-bound authorization, also provide a current machine access token
+through `ALLOWLY_AGENT_TOKEN`. Obtain it with the customer's Auth0 setup. Keep
+the token and client secret out of action context, logs, and command-line
+arguments. A missing, invalid, or expired required token stops the action.
+
+`--client-timestamp 2026-09-24T20:01:02Z` adds customer-reported event time.
+Keep this value unchanged on an exact retry. It is not an independent clock or
+an acknowledgment that the resulting receipt was received.
+
+The script calls `/v1/check`; the caller still runs the allowed action. For a
+registered destination that Allowly should call itself, use the SDK's
+[`execute` operation](https://allowly.ai/docs/api-reference/execute/). Do not
+call that destination again after a gateway execution. An unknown execution
+outcome requires checking the stored operation and destination, not generating
+a new ID and retrying the side effect.
 
 ## Decision Behavior
 

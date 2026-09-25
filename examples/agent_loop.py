@@ -6,6 +6,7 @@ from __future__ import annotations
 import pathlib
 import os
 import sys
+from datetime import datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
 
@@ -24,10 +25,12 @@ def main() -> int:
             "actions": ["email.send"],
             "resource": "gmail:thread:abc123",
             "context": {"agent_loop": "example"},
+            "client_timestamp": datetime.now(timezone.utc).isoformat(),
         },
         api_key=os.environ["ALLOWLY_API_KEY"],
         api_url=os.environ.get("ALLOWLY_API_URL", "https://api.allowly.ai"),
         timeout=30,
+        agent_token=os.environ.get("ALLOWLY_AGENT_TOKEN"),
     )
     result = summarize(response)
 

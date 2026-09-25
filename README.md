@@ -70,6 +70,23 @@ Decisions:
 
 Any non-2xx response is not an authorization. Do not perform the action.
 
+### Auth0 agent identity and customer time
+
+For an authorization linked to the customer's Auth0 machine identity, set
+`ALLOWLY_AGENT_TOKEN` to a current access token. The check script sends it separately
+from the Allowly runtime key. Token acquisition and renewal remain with the
+customer's Auth0 integration. Never place a client secret or token in action
+context, workflow output, or shell history.
+
+Pass `--client-timestamp` to the check script to record your reported event time,
+including a timezone. Keep it stable when retrying the same request. It does
+not replace Allowly's recorded time or provide an independent timestamp.
+
+These scripts check permission; your caller runs the allowed action. Use the
+[SDK execution operation](https://allowly.ai/docs/api-reference/execute/) to
+have Allowly call a registered destination and retain linked outcome evidence.
+Do not repeat the destination action in your own code after that operation.
+
 Never perform the action from an approval response alone.
 
 The check may return a pending receipt id. Signed receipts have a `schema_version`,
@@ -94,7 +111,7 @@ already-settled receipt is rejected; never resettle to change a number.
 
 ## Security
 
-- Never commit `ALLOWLY_API_KEY`. `allowly keys create --write-env .env.local`
+- Never commit `ALLOWLY_API_KEY`, `ALLOWLY_AGENT_TOKEN`, or an Auth0 client secret. `allowly keys create --write-env .env.local`
   writes it to a gitignored file.
 - Keep the key server-side. It is shown once at creation.
 - Rotate immediately on exposure.
