@@ -72,11 +72,12 @@ Keep this value unchanged on an exact retry. It is not an independent clock or
 an acknowledgment that the resulting receipt was received.
 
 The script calls `/v1/check`; the caller still runs the allowed action. For a
-registered destination that Allowly should call itself, use the SDK's
-[`execute` operation](https://allowly.ai/docs/api-reference/execute/). Do not
-call that destination again after a gateway execution. An unknown execution
-outcome requires checking the stored operation and destination, not generating
-a new ID and retrying the side effect.
+linked decision and outcome, use the SDK's customer-side
+[`execute` operation](https://allowly.ai/docs/api-reference/execute/). The SDK
+sends an allowed provider request from your host with local credentials. Do not
+send it again outside the SDK. An unknown execution outcome requires checking
+the stored operation and provider, not generating a new ID and retrying the
+side effect.
 
 ## Decision Behavior
 

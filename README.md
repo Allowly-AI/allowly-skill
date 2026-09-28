@@ -82,10 +82,10 @@ Pass `--client-timestamp` to the check script to record your reported event time
 including a timezone. Keep it stable when retrying the same request. It does
 not replace Allowly's recorded time or provide an independent timestamp.
 
-These scripts check permission; your caller runs the allowed action. Use the
-[SDK execution operation](https://allowly.ai/docs/api-reference/execute/) to
-have Allowly call a registered destination and retain linked outcome evidence.
-Do not repeat the destination action in your own code after that operation.
+These scripts check permission; your caller runs the allowed action. The
+[SDK execution operation](https://allowly.ai/docs/api-reference/execute/) can
+send an allowed request from your host with local provider credentials and
+retain linked outcome evidence. Do not send the same action a second time.
 
 Never perform the action from an approval response alone.
 
