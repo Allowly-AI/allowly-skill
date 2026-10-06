@@ -6,7 +6,14 @@ invoking tools, or spending money.
 
 ## Prerequisites
 
-- An Allowly account.
+An agent can start without human signup using `allowly trial create --json`.
+Follow the [canonical onboarding recipe](https://allowly.ai/docs/agents/) to
+author its own policy, enroll a native key, create a new authorization, check a
+real tool, and verify a fresh signed receipt. Free includes 1,000 lifetime
+decisions; the trial's unclaimed runtime access lasts seven days. The service
+must be enabled and your CLI release must include the trial command.
+
+- An Allowly trial or existing human-owned workspace.
 - A runtime API key from `allowly keys create`.
 - An existing `authorization_id`, created by your app from an agent policy. See
   [Authorizations](https://allowly.ai/docs/api-reference/authorizations/). This
@@ -70,6 +77,23 @@ Decisions:
 
 Any non-2xx response is not an authorization. Do not perform the action.
 
+### Auth0 agent identity and customer time
+
+For an authorization linked to the customer's Auth0 machine identity, set
+`ALLOWLY_AGENT_TOKEN` to a current access token. The check script sends it separately
+from the Allowly runtime key. Token acquisition and renewal remain with the
+customer's Auth0 integration. Never place a client secret or token in action
+context, workflow output, or shell history.
+
+Pass `--client-timestamp` to the check script to record your reported event time,
+including a timezone. Keep it stable when retrying the same request. It does
+not replace Allowly's recorded time or provide an independent timestamp.
+
+These scripts check permission; your caller runs the allowed action. The
+[SDK execution operation](https://allowly.ai/docs/api-reference/execute/) can
+send an allowed request from your host with local provider credentials and
+retain linked outcome evidence. Do not send the same action a second time.
+
 Never perform the action from an approval response alone.
 
 The check may return a pending receipt id. Signed receipts have a `schema_version`,
@@ -94,15 +118,33 @@ already-settled receipt is rejected; never resettle to change a number.
 
 ## Security
 
-- Never commit `ALLOWLY_API_KEY`. `allowly keys create --write-env .env.local`
+- Never commit `ALLOWLY_API_KEY`, `ALLOWLY_AGENT_TOKEN`, or an Auth0 client secret. `allowly keys create --write-env .env.local`
   writes it to a gitignored file.
 - Keep the key server-side. It is shown once at creation.
 - Rotate immediately on exposure.
 
 ## Setup
 
-The skill does not create authorizations. Use the Allowly CLI for workspace
-setup, then have the customer app create and store an `authorization_id`.
+For signup-free setup, start here:
+
+```bash
+allowly trial create --json
+allowly trial status --json
+```
+
+The CLI keeps recovery proof and the claim link in protected local files and
+prints safe metadata/paths. Resume uncertain bootstrap in the same directory.
+Do not print the claim secret; deliberately hand its protected link to the
+intended human through a private channel. Claim preserves used decisions and
+replaces old credentials/grants. At 429 `quota_exceeded`, stop the tool and
+follow the reviewed claim/paid-capacity path. Waiting does not refill Free.
+
+Use the native-identity SDK recipe on the onboarding page for trials. It signs
+tokens locally and verifies receipts. The stdlib helper below accepts an
+already supplied `ALLOWLY_AGENT_TOKEN`; it does not sign a native private key.
+
+For an existing human-owned workspace, use the Allowly CLI for setup, then
+create and store an `authorization_id` after enrollment:
 
 ```bash
 allowly login

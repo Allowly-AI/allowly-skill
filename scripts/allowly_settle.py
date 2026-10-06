@@ -9,7 +9,16 @@ import sys
 from argparse import ArgumentParser
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        return None
+
+
+def _open_no_redirect(request: Request, timeout: float) -> Any:
+    return build_opener(_NoRedirect()).open(request, timeout=timeout)
 
 
 def build_payload(args: Any) -> dict[str, Any]:
@@ -43,7 +52,7 @@ def settle(
             "User-Agent": "allowly-agent-skill",
         },
     )
-    with urlopen(request, timeout=timeout) as response:
+    with _open_no_redirect(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -99,8 +108,7 @@ def main(argv: list[str]) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        print(f"Allowly API returned {exc.code}: {body}", file=sys.stderr)
+        print(f"Allowly API returned HTTP {exc.code}", file=sys.stderr)
         return 1
     except URLError as exc:
         print(f"Allowly API request failed: {exc.reason}", file=sys.stderr)

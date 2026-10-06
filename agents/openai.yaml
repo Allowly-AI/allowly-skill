@@ -1,4 +1,4 @@
 interface:
   display_name: "Allowly"
-  short_description: "Check Allowly authorization before consequential agent actions."
-  default_prompt: "/allowly check --authorization-id auth_... --action email.send"
+  short_description: "Start an agent trial and check policy before tool calls."
+  default_prompt: "Follow https://allowly.ai/docs/agents/ to start an Allowly trial, author my tool policy, enroll the agent, and verify a live receipt."

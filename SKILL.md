@@ -1,13 +1,29 @@
 ---
 name: allowly
-description: Use before consequential or regulated agent actions such as contacting people, sending or exposing personal data, making automated decisions about individuals, changing records, invoking MCP/tools, or spending money. Provides the /allowly check pattern for calling Allowly /v1/check with an existing authorization_id and branching on allow, deny, confirm, or escalate while retaining the receipt id.
+description: Set up signup-free agent trials and check policy before tool calls, sending data, changing records, contacting people, or spending money. Use Allowly native enrollment and SDK checks with signed receipt verification; branch on allow, deny, confirm, or escalate with action limits and human approval.
 ---
 
 # Allowly
 
-Use Allowly before the agent performs a consequential action. The authorization
-must already exist; setup and authorization creation belong to the customer app
-and the Allowly CLI, not this skill.
+Use Allowly before the agent performs a consequential action. Follow the
+canonical [agent onboarding page](https://allowly.ai/docs/agents/) for a live
+trial: `allowly trial create --json` needs no human signup or browser approval.
+The service must be enabled and your CLI release must include this command.
+
+Author the policy for your real tool, apply it with the existing CLI, enroll a
+local native agent key, create a runtime key, then create and save a **new
+authorization after enrollment** with the SDK. The SDK recipe on that page
+uses the native private credential locally, checks the four outcomes, and
+verifies fresh signed receipts against the trusted saved workspace ID.
+Existing human-owned workspaces keep the browser-approved `allowly login` flow.
+
+Bootstrap prints safe metadata and protected file paths. Keep setup/runtime
+credentials, recovery proof, native keys, and the claim link out of logs and
+chat. Resume interrupted bootstrap in the same config directory; do not make
+a new account to retry. `allowly trial status --json` reports the 1,000 lifetime
+Free allowance. At 429 `quota_exceeded`, stop and intentionally hand the secret
+claim link from its protected file to the intended human. Claim keeps usage
+and replaces trial authority. Unclaimed runtime access expires after seven days.
 
 Script paths below are relative to this SKILL.md file, not to the working
 directory. Resolve them against the skill directory before running.
@@ -53,18 +69,45 @@ Pass `--idempotency-key` on any budgeted check. A retry without one reserves the
 budget a second time. Use a stable business-operation identifier, not a
 timestamp or random value.
 
-`context` may not use the keys `budget`, `escalation`, or `session_id` — the API
-writes those into the receipt itself and rejects them with 422. Pass a session
-label with `--session-id`. Keep context under 4KB.
+`context` may not use `budget`, `escalation`, `session_id`,
+`authorization_provenance`, `identity_verification`, `client_timestamp`,
+`client_timestamp_source`, or `execution`. These are server-owned receipt
+fields; the API rejects caller use with 422. Pass a session label with
+`--session-id` and event time with `--client-timestamp`. Keep context under 4KB.
 
 The script requires `ALLOWLY_API_KEY`. It uses `ALLOWLY_API_URL` when set,
 otherwise `https://api.allowly.ai`.
+
+For a native-enrolled trial, use the canonical SDK recipe or the CLI's
+`allowly check --agent-credential <protected-file>` instead of this stdlib
+helper. They generate a fresh short-lived token locally. The helper can accept
+an already generated token through `ALLOWLY_AGENT_TOKEN`; it does not read or
+sign native private keys. Keep receipt verification in your SDK integration.
+
+For an Auth0-bound authorization, also provide a current machine access token
+through `ALLOWLY_AGENT_TOKEN`. Obtain it with the customer's Auth0 setup. Keep
+the token and client secret out of action context, logs, and command-line
+arguments. A missing, invalid, or expired required token stops the action.
+
+`--client-timestamp 2026-09-24T20:01:02Z` adds customer-reported event time.
+Keep this value unchanged on an exact retry. It is not an independent clock or
+an acknowledgment that the resulting receipt was received.
+
+The script calls `/v1/check`; the caller still runs the allowed action. For a
+linked decision and outcome, use the SDK's customer-side
+[`execute` operation](https://allowly.ai/docs/api-reference/execute/). The SDK
+sends an allowed provider request from your host with local credentials. Do not
+send it again outside the SDK. An unknown execution outcome requires checking
+the stored operation and provider, not generating a new ID and retrying the
+side effect.
 
 ## Decision Behavior
 
 A decision is only the four verbs below. Any non-2xx response from `/v1/check`
 is **not** an authorization: do not perform the action. On 429 or 5xx, retry per
-`Retry-After` and stop if it does not clear. A check that fails to complete
+`Retry-After` when present. `quota_exceeded` never clears through waiting or
+key rotation: stop and hand off the protected claim link for reviewed paid
+continuation. A check that fails to complete
 means the action does not happen.
 
 - `allow`: perform the action and retain the `receipt_id` in the action log.
@@ -118,7 +161,17 @@ is rejected by the API; never resettle to change a number.
 
 ## Setup Boundary
 
-Teach setup by pointing users to the CLI:
+Use the [canonical agent onboarding](https://allowly.ai/docs/agents/) for a
+signup-free trial:
+
+```bash
+allowly trial create --json
+allowly trial status --json
+```
+
+It covers agent-authored policy, native enrollment, new authorization, fresh
+receipt verification, bounded recovery, and human claim in one place.
+For an existing human-owned workspace, use the original CLI flow:
 
 ```bash
 allowly login
