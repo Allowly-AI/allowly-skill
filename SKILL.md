@@ -132,10 +132,27 @@ Never treat `confirm` or `escalate` as approval. They are control-flow stops.
 Never perform the action from an approval response alone. A rejected escalation
 becomes `deny` on the matching recheck.
 
+In the OPA build, the authorization pins one immutable policy edition through
+`policy_ref` (policy id, version, and definition digest). Conditions live in that
+edition. The action choice and matching rules use fixed priority
+`deny > escalate > confirm > allow`; a rule cannot weaken the action choice.
+Conditions inside a rule use OR: one match is enough. Supported operators are
+`eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `exists`, `contains_any`,
+`contains_none`, and `empty`. Missing or wrong-type comparison input returns
+422 `policy_input_invalid`, not `confirm`; `exists` explicitly checks presence.
+Use the [canonical policy contract](https://allowly.ai/docs/api-reference/decisions-and-attributes/)
+for field types and examples.
+
 The check response may contain only a pending receipt id. A fetched signed
-receipt has a `schema_version`, signed top-level `alg` and `key_id` fields, and
-an unpadded base64url `signature` string. Signature presence is not verification;
-verify with the published workspace keys and expected workspace id.
+wire-5 receipt is the original JWS object with `protected`, `payload`, and
+`signature` strings. The protected header contains `alg: EdDSA` and `kid`; the
+signed payload contains `schema_version: "5"` and the immutable `policy_ref`.
+Retain the original encoded values. Decoding fields for display or finding a
+signature is not verification. Use the maintained verifier with the expected
+workspace and independently trusted key fingerprints; do not reconstruct the
+signed object from decoded fields. The current rebuild's verifier publication
+and production cutover are separate gates: use a compatible local build until
+those gates pass.
 
 ## Budget Settlement
 
