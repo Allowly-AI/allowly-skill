@@ -96,9 +96,12 @@ retain linked outcome evidence. Do not send the same action a second time.
 
 Never perform the action from an approval response alone.
 
-The check may return a pending receipt id. Signed receipts have a `schema_version`,
-signed top-level `alg` and `key_id` fields, and an unpadded base64url
-`signature`; verify them against the expected workspace's published keys.
+The check may return a pending receipt id. A fetched signed wire-5 receipt is
+the original JWS object with `protected`, `payload`, and `signature` strings.
+The protected header carries `alg` and `kid`; the payload carries
+`schema_version: "5"`. Preserve the original strings and verify them against the
+expected workspace's published keys with the maintained verifier. Decoding
+fields is not verification.
 
 ## Budget Settlement
 
@@ -159,6 +162,7 @@ allowly keys create --write-env .env.local --var ALLOWLY_API_KEY
 - `SKILL.md`: agent instructions and trigger description.
 - `scripts/allowly_check.py`: stdlib `/v1/check` helper.
 - `scripts/allowly_settle.py`: stdlib budget settlement helper.
+- `scripts/allowly_http.py`: safe HTTP error details shared by both helpers.
 - `agents/openai.yaml`: OpenAI agent tool definition.
 - `examples/agent_loop.py`: minimal branch loop.
 
