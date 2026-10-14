@@ -71,8 +71,9 @@ timestamp or random value.
 
 `context` may not use `budget`, `escalation`, `session_id`,
 `authorization_provenance`, `identity_verification`, `client_timestamp`,
-`client_timestamp_source`, or `execution`. These are server-owned receipt
-fields; the API rejects caller use with 422. Pass a session label with
+`client_timestamp_source`, `execution`, `seal_origin`, `policy_ref`, `policy_eval`,
+or `engine_version`. These are server-owned receipt fields; the API rejects
+caller use with 422. Pass a session label with
 `--session-id` and event time with `--client-timestamp`. Keep context under 4KB.
 
 The script requires `ALLOWLY_API_KEY`. It uses `ALLOWLY_API_URL` when set,
@@ -107,8 +108,8 @@ A decision is only the four verbs below. Any non-2xx response from `/v1/check`
 is **not** an authorization: do not perform the action. On 429 or 5xx, retry per
 `Retry-After` when present. `quota_exceeded` never clears through waiting or
 key rotation: stop and hand off the protected claim link for reviewed paid
-continuation. A check that fails to complete
-means the action does not happen.
+continuation. The helpers report the HTTP status, safe error code, and valid
+`Retry-After` value. A check that fails to complete means the action does not happen.
 
 - `allow`: perform the action and retain the `receipt_id` in the action log.
 - `deny`: do not perform the action; surface the reason and replan.
@@ -150,9 +151,8 @@ signed payload contains `schema_version: "5"` and the immutable `policy_ref`.
 Retain the original encoded values. Decoding fields for display or finding a
 signature is not verification. Use the maintained verifier with the expected
 workspace and independently trusted key fingerprints; do not reconstruct the
-signed object from decoded fields. The current rebuild's verifier publication
-and production cutover are separate gates: use a compatible local build until
-those gates pass.
+signed object from decoded fields. Use the published wire-5 verifier and
+compatible SDK releases.
 
 ## Budget Settlement
 

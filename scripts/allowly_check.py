@@ -13,6 +13,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from allowly_http import http_error_message
+
 
 # The API writes these into the receipt itself, so /v1/check rejects them in
 # caller context with 422. Fail locally instead of round-tripping to find out.
@@ -22,9 +24,13 @@ RESERVED_CONTEXT_KEYS = frozenset(
         "budget",
         "client_timestamp",
         "client_timestamp_source",
+        "engine_version",
         "escalation",
         "execution",
         "identity_verification",
+        "policy_eval",
+        "policy_ref",
+        "seal_origin",
         "session_id",
     }
 )
@@ -249,7 +255,7 @@ def main(argv: list[str]) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     except HTTPError as exc:
-        print(f"Allowly API returned HTTP {exc.code}", file=sys.stderr)
+        print(http_error_message(exc), file=sys.stderr)
         return 1
     except URLError as exc:
         print(f"Allowly API request failed: {exc.reason}", file=sys.stderr)

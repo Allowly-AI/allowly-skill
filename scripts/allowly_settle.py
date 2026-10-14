@@ -11,6 +11,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from allowly_http import http_error_message
+
 
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
@@ -108,7 +110,7 @@ def main(argv: list[str]) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     except HTTPError as exc:
-        print(f"Allowly API returned HTTP {exc.code}", file=sys.stderr)
+        print(http_error_message(exc), file=sys.stderr)
         return 1
     except URLError as exc:
         print(f"Allowly API request failed: {exc.reason}", file=sys.stderr)
